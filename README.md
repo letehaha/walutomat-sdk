@@ -1,5 +1,6 @@
 # Walutomat SDK
 
+[![npm](https://img.shields.io/npm/v/walutomat-sdk)](https://www.npmjs.com/package/walutomat-sdk)
 [![CI](https://github.com/letehaha/walutomat-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/letehaha/walutomat-sdk/actions/workflows/ci.yml)
 [![Integration tests](https://github.com/letehaha/walutomat-sdk/actions/workflows/integration.yml/badge.svg)](https://github.com/letehaha/walutomat-sdk/actions/workflows/integration.yml)
 
