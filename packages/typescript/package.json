@@ -10,6 +10,11 @@
     "walutomat"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/letehaha/walutomat-sdk.git",
+    "directory": "packages/typescript"
+  },
   "files": [
     "dist"
   ],
