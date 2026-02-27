@@ -1,0 +1,1106 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Walutomat API",
+    "version": "2.0.0",
+    "description": "Unofficial OpenAPI spec for the Walutomat (Currency One) API v2.0.0.\n\nBase URLs:\n- **Production**: `https://api.walutomat.pl/api/v2.0.0`\n- **Sandbox**: `https://api.walutomat.dev/api/v2.0.0`\n\n## Authentication\n\nAll endpoints (except `GET /market_fx/best_offers`) require **all three** headers on every request:\n1. `X-API-Key` — your API key\n2. `X-API-Timestamp` — Unix timestamp in milliseconds\n3. `X-API-Signature` — RSA SHA-256 signature of `timestamp + endpointPath + bodyOrQuery`\n\nSending only `X-API-Key` will fail with `INVALID_SIGNATURE` — the API enforces that `X-API-Signature` and `X-API-Timestamp` are always provided together.\n\n## \"Try it\" limitations\n\nThe RSA signing step requires `node:crypto`, which is not available in the browser. Therefore:\n- **`GET /market_fx/best_offers`** — works from \"Try it\" (no auth needed)\n- **All other endpoints** — use the TypeScript SDK or curl. This explorer is useful as schema/parameter documentation for those endpoints.\n\n## Request format\n\nPOST bodies use `application/x-www-form-urlencoded`, **not** JSON.\n\nAll monetary values are strings (e.g. `\"4.1234\"`)."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3333/proxy/api/v2.0.0",
+      "description": "Local signing proxy (all endpoints work)"
+    },
+    {
+      "url": "https://api.walutomat.pl/api/v2.0.0",
+      "description": "Production (direct — signature required)"
+    },
+    {
+      "url": "https://api.walutomat.dev/api/v2.0.0",
+      "description": "Sandbox (direct — signature required)"
+    }
+  ],
+  "security": [
+    {
+      "apiKey": [],
+      "apiSignature": [],
+      "apiTimestamp": []
+    }
+  ],
+  "tags": [
+    { "name": "Account", "description": "Wallet balances and operation history" },
+    { "name": "Transfers", "description": "Internal, IBAN, SEPA, and non-IBAN transfers" },
+    { "name": "Direct FX", "description": "Instant currency exchange at Currency One rates" },
+    { "name": "Market FX", "description": "P2P currency exchange order book" }
+  ],
+  "paths": {
+    "/account/balances": {
+      "get": {
+        "operationId": "getBalances",
+        "summary": "Get wallet balances",
+        "description": "Returns balances for all currencies in the wallet.",
+        "tags": ["Account"],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WalletBalanceArray"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account/history": {
+      "get": {
+        "operationId": "getHistory",
+        "summary": "Get operation history",
+        "description": "Returns wallet operation history with optional filters and pagination. Use `continueFrom` (set to the last `historyItemId` received) to paginate through results.",
+        "tags": ["Account"],
+        "parameters": [
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "description": "ISO 8601 datetime — only operations on or after this date (inclusive).",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "description": "ISO 8601 datetime — only operations before this date (exclusive).",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "currencies",
+            "in": "query",
+            "description": "Filter by currencies (comma-separated or repeated).",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/components/schemas/Currency" }
+            }
+          },
+          {
+            "name": "operationType",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/OperationType" }
+          },
+          {
+            "name": "operationDetailedType",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/OperationDetailedType" }
+          },
+          {
+            "name": "itemLimit",
+            "in": "query",
+            "description": "Max items per page (1–200, default 200).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 200 }
+          },
+          {
+            "name": "continueFrom",
+            "in": "query",
+            "description": "Resume pagination from the last `historyItemId` received.",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/SortOrder" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_HistoryItemArray"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account/history/mt940": {
+      "get": {
+        "operationId": "getHistoryMt940",
+        "summary": "Get history in MT940 format",
+        "description": "Returns wallet history in MT940 (SWIFT) format as a string.",
+        "tags": ["Account"],
+        "parameters": [
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": true,
+            "description": "Date in YYYY-MM-DD format.",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "description": "Date in YYYY-MM-DD format (exclusive upper bound).",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "currencies",
+            "in": "query",
+            "description": "Filter by currencies.",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/components/schemas/Currency" }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MT940 formatted string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfer": {
+      "get": {
+        "operationId": "getTransferStatus",
+        "summary": "Get transfer status",
+        "description": "Learn transfer status and details by `transferId` or `submitId`. At least one must be provided; if both are given, `transferId` takes precedence.",
+        "tags": ["Transfers"],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "query",
+            "description": "UUID of the transfer.",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "submitId",
+            "in": "query",
+            "description": "Unique sender-assigned ID.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TransferDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfer/internal": {
+      "post": {
+        "operationId": "createInternalTransfer",
+        "summary": "Create internal transfer",
+        "description": "Request an internal transfer between Currency One wallets.",
+        "tags": ["Transfers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/CreateInternalTransferBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TransferCreationResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfer/iban": {
+      "post": {
+        "operationId": "createIbanTransfer",
+        "summary": "Create IBAN transfer",
+        "description": "Request a transfer to an IBAN destination.",
+        "tags": ["Transfers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/CreateIbanTransferBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TransferCreationResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfer/iban/sepa": {
+      "post": {
+        "operationId": "createSepaTransfer",
+        "summary": "Create SEPA transfer",
+        "description": "Request a SEPA or SEPA Instant transfer. Currency is always EUR.",
+        "tags": ["Transfers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/CreateSepaTransferBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TransferCreationResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfer/noniban": {
+      "post": {
+        "operationId": "createNonIbanTransfer",
+        "summary": "Create non-IBAN transfer",
+        "description": "Request a transfer to a non-IBAN destination (specific countries like KR, CN, AU, etc.).",
+        "tags": ["Transfers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/CreateNonIbanTransferBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TransferCreationResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/direct_fx/rates": {
+      "get": {
+        "operationId": "getRates",
+        "summary": "Get exchange rates",
+        "description": "Get current buy/sell exchange rate for a currency pair.",
+        "tags": ["Direct FX"],
+        "parameters": [
+          {
+            "name": "currencyPair",
+            "in": "query",
+            "required": true,
+            "description": "Currency pair (e.g. `EURPLN`).",
+            "schema": { "type": "string", "example": "EURPLN" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ExchangeRate"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/direct_fx/exchanges": {
+      "post": {
+        "operationId": "createExchange",
+        "summary": "Execute direct exchange",
+        "description": "Execute a direct currency exchange at the rate provided by Currency One. The `ts` param must come from a prior `getRates` response and is valid for 10 minutes.",
+        "tags": ["Direct FX"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/CreateExchangeBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWithDuplicate_ExchangeResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/market_fx/best_offers": {
+      "get": {
+        "operationId": "getBestOffers",
+        "summary": "Get best offers",
+        "description": "Get 10 best bids and asks for a currency pair. **No authentication required.**",
+        "tags": ["Market FX"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "currencyPair",
+            "in": "query",
+            "required": true,
+            "description": "Market currency pair (e.g. `EURPLN`).",
+            "schema": { "$ref": "#/components/schemas/MarketCurrencyPair" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_BestOffers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/market_fx/best_offers/detailed": {
+      "get": {
+        "operationId": "getBestOffersDetailed",
+        "summary": "Get best offers (detailed)",
+        "description": "Get a more detailed list of best bids and asks, including volume breakdowns and quotes.",
+        "tags": ["Market FX"],
+        "parameters": [
+          {
+            "name": "currencyPair",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/MarketCurrencyPair" }
+          },
+          {
+            "name": "itemLimit",
+            "in": "query",
+            "description": "How many uniquely priced offers to fetch (default: 10).",
+            "schema": { "type": "integer", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_BestOffersDetailed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/market_fx/orders/active": {
+      "get": {
+        "operationId": "getActiveOrders",
+        "summary": "Get active orders",
+        "description": "Get active orders, ordered by most recently submitted.",
+        "tags": ["Market FX"],
+        "parameters": [
+          {
+            "name": "itemLimit",
+            "in": "query",
+            "description": "Max items (1–100, default 10).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 }
+          },
+          {
+            "name": "olderThan",
+            "in": "query",
+            "description": "ISO datetime — fetch orders older than this (for pagination).",
+            "schema": { "type": "string", "format": "date-time" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MarketOrderArray"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/market_fx/orders": {
+      "get": {
+        "operationId": "getOrder",
+        "summary": "Get order by ID",
+        "description": "Get a specific order by ID. Returns an array (empty if not found).",
+        "tags": ["Market FX"],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "query",
+            "required": true,
+            "description": "UUID of the order.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MarketOrderArray"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "submitOrder",
+        "summary": "Submit market order",
+        "description": "Submit a new buy/sell order to the Walutomat P2P market.",
+        "tags": ["Market FX"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/SubmitOrderBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWithDuplicate_SubmitOrderResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/market_fx/orders/close": {
+      "post": {
+        "operationId": "closeOrder",
+        "summary": "Close (withdraw) an order",
+        "description": "Withdraw an active order from the market.",
+        "tags": ["Market FX"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["orderId"],
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID of the order to close."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MarketOrder"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Your Walutomat API key."
+      },
+      "apiSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Signature",
+        "description": "RSA SHA-256 signature of `timestamp + endpointPath + bodyOrQuery`. Requires `node:crypto` — cannot be generated from a browser."
+      },
+      "apiTimestamp": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Timestamp",
+        "description": "Unix timestamp in milliseconds, used in the signature payload."
+      }
+    },
+    "schemas": {
+      "Currency": {
+        "type": "string",
+        "enum": [
+          "AUD", "BGN", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP",
+          "HKD", "HUF", "ILS", "JPY", "MXN", "NOK", "NZD", "PLN", "RON",
+          "SEK", "SGD", "TRY", "USD", "ZAR"
+        ]
+      },
+      "MarketCurrencyPair": {
+        "type": "string",
+        "enum": [
+          "EURGBP", "EURUSD", "EURCHF", "EURPLN", "GBPUSD", "GBPCHF",
+          "GBPPLN", "USDCHF", "USDPLN", "CHFPLN", "EURSEK", "EURNOK",
+          "EURDKK", "EURCZK", "CZKPLN", "DKKPLN", "NOKPLN", "SEKPLN",
+          "AUDPLN", "BGNPLN", "CADPLN", "CNYPLN", "HKDPLN", "HUFPLN",
+          "ILSPLN", "JPYPLN", "MXNPLN", "NZDPLN", "RONPLN", "SGDPLN",
+          "TRYPLN", "ZARPLN", "EURAUD", "EURBGN", "EURCAD", "EURCNY",
+          "EURHKD", "EURHUF", "EURILS", "EURJPY", "EURMXN", "EURNZD",
+          "EURRON", "EURSGD", "EURTRY", "EURZAR"
+        ]
+      },
+      "BuySell": {
+        "type": "string",
+        "enum": ["BUY", "SELL"]
+      },
+      "SortOrder": {
+        "type": "string",
+        "enum": ["ASC", "DESC"]
+      },
+      "OperationType": {
+        "type": "string",
+        "enum": ["PAYIN", "PAYOUT", "COMMISSION", "DIRECT_FX", "MARKET_FX", "TRANSFER", "OTHER"]
+      },
+      "OperationDetailedType": {
+        "type": "string",
+        "enum": [
+          "PAYIN", "PAYIN_CARD", "PAYIN_CARD_FEE", "PAYIN_FEE",
+          "PAYIN_PAYPAL", "PAYIN_PAYPAL_FEE", "PAYIN_P24", "PAYIN_P24_FEE",
+          "PAYIN_P24_BLIK", "PAYIN_P24_GPAY", "PAYIN_P24_NOW",
+          "PAYIN_BLIK", "PAYIN_BLIK_FEE",
+          "PAYOUT", "PAYOUT_FEE", "PAYOUT_RETURN", "PAYOUT_FEE_RETURN",
+          "PAYOUT_POST_FACTUM", "PAYOUT_REJECT",
+          "CASH_PAYOUT", "CASH_PAYOUT_FEE", "CASH_PAYOUT_RETURN",
+          "THIRD_PARTY_PAYOUT", "THIRD_PARTY_PAYOUT_FEE",
+          "THIRD_PARTY_PAYOUT_REJECT", "THIRD_PARTY_PAYOUT_REJECT_FEE",
+          "THIRD_PARTY_PAYOUT_RETURN", "THIRD_PARTY_PAYOUT_RETURN_FEE",
+          "PAYMENT_AGENT_PAYOUT", "PAYMENT_AGENT_PAYOUT_FEE",
+          "PAYMENT_AGENT_PAYOUT_REJECT", "PAYMENT_AGENT_PAYOUT_REJECT_FEE",
+          "PAYMENT_AGENT_PAYOUT_RETURN", "PAYMENT_AGENT_PAYOUT_RETURN_FEE",
+          "MARKET_FX", "MARKET_FX_FEE", "DIRECT_FX",
+          "CHARGE_COMPENSATION", "CUSTOMER_PROFIT", "WT_PAY",
+          "INTERNAL", "MONTHLY_FEE", "OTHER"
+        ]
+      },
+      "TransferStatus": {
+        "type": "string",
+        "enum": ["NEW", "PROCESSING", "SETTLED", "REJECTED", "RETURNED", "CANCELLED"]
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": ["ACTIVE", "CLOSED", "EXECUTED"]
+      },
+      "TransferCostInstruction": {
+        "type": "string",
+        "enum": ["SENDER_VOLUME", "RECEIVER_VOLUME"]
+      },
+      "TransferPurpose": {
+        "type": "string",
+        "enum": ["BILLS", "COMMODITY", "DONATION_ENTITY", "DONATION_PERSON", "FAMILY", "PREPAYMENT", "SERVICE", "PROPERTY", "OTHER"]
+      },
+      "SourceOfIncome": {
+        "type": "string",
+        "enum": ["SALARY", "SAVINGS", "SCHOLARSHIP", "INSURANCE", "INVESTMENTS", "DONATION", "BUSINESS_INCOME", "OTHER"]
+      },
+      "NonIbanCountry": {
+        "type": "string",
+        "enum": [
+          "KR", "CN", "AU", "CA", "JP", "NZ", "SG", "TW", "NG", "GH",
+          "VN", "IN", "ET", "ZA", "GM", "GN", "AR", "BD", "CL", "ID",
+          "MX", "MY", "PY", "QA", "TH", "UY", "LK"
+        ]
+      },
+      "CnapsTransactionType": {
+        "type": "string",
+        "enum": ["CGODDR", "CSTRDR", "CCDNDR", "CCTFDR", "COCADR"]
+      },
+      "OperationDetail": {
+        "type": "object",
+        "required": ["key", "value"],
+        "properties": {
+          "key": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      },
+      "WalletBalance": {
+        "type": "object",
+        "required": ["currency", "balanceTotal", "balanceAvailable", "balanceReserved"],
+        "properties": {
+          "currency": { "$ref": "#/components/schemas/Currency" },
+          "balanceTotal": { "type": "string", "example": "1000.00" },
+          "balanceAvailable": { "type": "string", "example": "950.00" },
+          "balanceReserved": { "type": "string", "example": "50.00" }
+        }
+      },
+      "HistoryItem": {
+        "type": "object",
+        "required": [
+          "historyItemId", "transactionId", "ts", "operationAmount",
+          "balanceAfter", "currency", "operationType",
+          "operationDetailedType", "operationDetails"
+        ],
+        "properties": {
+          "historyItemId": { "type": "integer" },
+          "transactionId": { "type": "string" },
+          "ts": { "type": "string", "format": "date-time" },
+          "operationAmount": { "type": "string", "example": "-100.00" },
+          "balanceAfter": { "type": "string", "example": "900.00" },
+          "currency": { "$ref": "#/components/schemas/Currency" },
+          "operationType": { "$ref": "#/components/schemas/OperationType" },
+          "operationDetailedType": { "$ref": "#/components/schemas/OperationDetailedType" },
+          "operationDetails": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OperationDetail" }
+          }
+        }
+      },
+      "TransferDetails": {
+        "type": "object",
+        "required": [
+          "transferId", "submitId", "responseTs", "transferStatus",
+          "submittedTs", "currency", "volume", "transferTitle",
+          "recipientAccount", "recipientName"
+        ],
+        "properties": {
+          "transferId": { "type": "string", "format": "uuid" },
+          "submitId": { "type": "string" },
+          "responseTs": { "type": "string", "format": "date-time" },
+          "transferStatus": { "$ref": "#/components/schemas/TransferStatus" },
+          "submittedTs": { "type": "string", "format": "date-time" },
+          "settledTs": { "type": "string", "format": "date-time" },
+          "currency": { "$ref": "#/components/schemas/Currency" },
+          "volume": { "type": "string", "example": "100.00" },
+          "transferTitle": { "type": "string" },
+          "recipientAccount": { "type": "string" },
+          "recipientName": { "type": "string" }
+        }
+      },
+      "TransferCreationResult": {
+        "type": "object",
+        "required": ["feeAmount", "feeCurrency", "transferId"],
+        "properties": {
+          "feeAmount": { "type": "string", "example": "0.00" },
+          "feeCurrency": { "$ref": "#/components/schemas/Currency" },
+          "transferId": { "type": "string", "format": "uuid" },
+          "transferType": { "type": "string" }
+        }
+      },
+      "ExchangeRate": {
+        "type": "object",
+        "required": ["ts", "currencyPair", "buyRate", "sellRate"],
+        "properties": {
+          "ts": { "type": "string", "description": "Timestamp to pass back to createExchange. Valid for 10 minutes." },
+          "currencyPair": { "type": "string", "example": "EURPLN" },
+          "buyRate": { "type": "string", "example": "4.2456" },
+          "sellRate": { "type": "string", "example": "4.2789" }
+        }
+      },
+      "ExchangeResult": {
+        "type": "object",
+        "required": ["exchangeId"],
+        "properties": {
+          "exchangeId": { "type": "string" }
+        }
+      },
+      "OfferEntry": {
+        "type": "object",
+        "required": ["price", "volume"],
+        "properties": {
+          "price": { "type": "string", "example": "4.2456" },
+          "volume": { "type": "string", "example": "1000.00" },
+          "volumeCurrency": { "$ref": "#/components/schemas/Currency" }
+        }
+      },
+      "BestOffers": {
+        "type": "object",
+        "required": ["ts", "currencyPair", "bids", "asks"],
+        "properties": {
+          "ts": { "type": "string", "format": "date-time" },
+          "currencyPair": { "$ref": "#/components/schemas/MarketCurrencyPair" },
+          "bids": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OfferEntry" }
+          },
+          "asks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OfferEntry" }
+          }
+        }
+      },
+      "DetailedQuote": {
+        "type": "object",
+        "required": ["volume", "valueInOppositeCurrency", "ts"],
+        "properties": {
+          "volume": { "type": "string" },
+          "valueInOppositeCurrency": { "type": "string" },
+          "ts": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DetailedOfferEntry": {
+        "type": "object",
+        "required": ["price", "volume", "valueInOppositeCurrency", "quotes"],
+        "properties": {
+          "price": { "type": "string" },
+          "volume": { "type": "string" },
+          "valueInOppositeCurrency": { "type": "string" },
+          "quotes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DetailedQuote" }
+          }
+        }
+      },
+      "BestOffersDetailed": {
+        "type": "object",
+        "required": ["currencyPair", "bids", "asks"],
+        "properties": {
+          "ts": { "type": "string", "format": "date-time" },
+          "currencyPair": { "$ref": "#/components/schemas/MarketCurrencyPair" },
+          "bids": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DetailedOfferEntry" }
+          },
+          "asks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DetailedOfferEntry" }
+          }
+        }
+      },
+      "MarketOrder": {
+        "type": "object",
+        "required": [
+          "orderId", "submitId", "submitTs", "updateTs", "status",
+          "completion", "currencyPair", "buySell", "volume", "volumeCurrency",
+          "limitPrice", "soldAmount", "soldCurrency", "boughtAmount",
+          "boughtCurrency", "commissionAmount", "commissionCurrency",
+          "commissionRate"
+        ],
+        "properties": {
+          "orderId": { "type": "string", "format": "uuid" },
+          "submitId": { "type": "string" },
+          "submitTs": { "type": "string", "format": "date-time" },
+          "updateTs": { "type": "string", "format": "date-time" },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "completion": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percentage of order completed (0–100)." },
+          "currencyPair": { "$ref": "#/components/schemas/MarketCurrencyPair" },
+          "buySell": { "$ref": "#/components/schemas/BuySell" },
+          "volume": { "type": "string", "example": "1000.00" },
+          "volumeCurrency": { "$ref": "#/components/schemas/Currency" },
+          "limitPrice": { "type": "string", "example": "4.2456" },
+          "soldAmount": { "type": "string" },
+          "soldCurrency": { "$ref": "#/components/schemas/Currency" },
+          "boughtAmount": { "type": "string" },
+          "boughtCurrency": { "$ref": "#/components/schemas/Currency" },
+          "commissionAmount": { "type": "string" },
+          "commissionCurrency": { "$ref": "#/components/schemas/Currency" },
+          "commissionRate": { "type": "string" }
+        }
+      },
+      "SubmitOrderResult": {
+        "type": "object",
+        "required": ["orderId"],
+        "properties": {
+          "orderId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "required": ["key", "description"],
+        "properties": {
+          "key": { "type": "string" },
+          "description": { "type": "string" },
+          "trace": { "type": "string" },
+          "errorData": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["key", "value"],
+              "properties": {
+                "key": { "type": "string" },
+                "value": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "CreateInternalTransferBody": {
+        "type": "object",
+        "required": ["volume", "currency", "accountNumber", "recipientName", "transferCostInstruction"],
+        "properties": {
+          "dryRun": { "type": "boolean", "description": "When true, validates without executing." },
+          "submitId": { "type": "string", "description": "Required when dryRun is false. Must be unique per transfer." },
+          "volume": { "type": "string", "example": "100.00" },
+          "currency": { "$ref": "#/components/schemas/Currency" },
+          "title": { "type": "string" },
+          "accountNumber": { "type": "string", "description": "Destination account number (e.g. WX1234567890WX)." },
+          "recipientName": { "type": "string" },
+          "recipientAddress": { "type": "string" },
+          "transferCostInstruction": { "$ref": "#/components/schemas/TransferCostInstruction" }
+        }
+      },
+      "CreateIbanTransferBody": {
+        "type": "object",
+        "required": ["volume", "currency", "accountNumber", "recipientName", "transferCostInstruction"],
+        "properties": {
+          "dryRun": { "type": "boolean" },
+          "submitId": { "type": "string" },
+          "volume": { "type": "string", "example": "100.00" },
+          "currency": { "$ref": "#/components/schemas/Currency" },
+          "title": { "type": "string" },
+          "accountNumber": { "type": "string", "description": "IBAN with mandatory country code prefix." },
+          "recipientName": { "type": "string" },
+          "recipientAddress": { "type": "string" },
+          "faster": { "type": "boolean" },
+          "transferCostInstruction": { "$ref": "#/components/schemas/TransferCostInstruction" },
+          "additionalRemittanceInformation": { "type": "string" },
+          "transferPurpose": { "$ref": "#/components/schemas/TransferPurpose" },
+          "sourceOfIncome": { "$ref": "#/components/schemas/SourceOfIncome" }
+        }
+      },
+      "CreateSepaTransferBody": {
+        "type": "object",
+        "required": ["volume", "accountNumber", "recipientName"],
+        "properties": {
+          "dryRun": { "type": "boolean" },
+          "submitId": { "type": "string" },
+          "volume": { "type": "string", "example": "100.00" },
+          "title": { "type": "string" },
+          "accountNumber": { "type": "string", "description": "IBAN with mandatory country code prefix." },
+          "recipientName": { "type": "string" },
+          "recipientAddress": { "type": "string" },
+          "instant": { "type": "boolean", "description": "SEPA Instant when true. Default: false." },
+          "additionalRemittanceInformation": { "type": "string" },
+          "transferPurpose": { "$ref": "#/components/schemas/TransferPurpose" },
+          "sourceOfIncome": { "$ref": "#/components/schemas/SourceOfIncome" }
+        }
+      },
+      "CreateNonIbanTransferBody": {
+        "type": "object",
+        "required": [
+          "volume", "currency", "country", "swift", "accountNumber",
+          "recipientName", "recipientAddress", "transferCostInstruction",
+          "transferPurpose", "sourceOfIncome"
+        ],
+        "properties": {
+          "dryRun": { "type": "boolean" },
+          "submitId": { "type": "string" },
+          "volume": { "type": "string", "example": "100.00" },
+          "currency": { "$ref": "#/components/schemas/Currency" },
+          "title": { "type": "string" },
+          "country": { "$ref": "#/components/schemas/NonIbanCountry" },
+          "swift": { "type": "string" },
+          "accountNumber": { "type": "string" },
+          "recipientName": { "type": "string" },
+          "recipientAddress": { "type": "string", "description": "Format: CC;province;town;postcode;street;building;flat" },
+          "faster": { "type": "boolean" },
+          "transferCostInstruction": { "$ref": "#/components/schemas/TransferCostInstruction" },
+          "transferPurpose": { "$ref": "#/components/schemas/TransferPurpose" },
+          "sourceOfIncome": { "$ref": "#/components/schemas/SourceOfIncome" },
+          "additionalRemittanceInformation": { "type": "string" },
+          "cnaps": { "type": "string", "description": "Required when currency is CNY and country is CN." },
+          "cnapsTransactionType": { "$ref": "#/components/schemas/CnapsTransactionType" }
+        }
+      },
+      "CreateExchangeBody": {
+        "type": "object",
+        "required": ["currencyPair", "buySell", "volume", "volumeCurrency", "ts"],
+        "properties": {
+          "dryRun": { "type": "boolean" },
+          "submitId": { "type": "string", "description": "Required when dryRun is false." },
+          "currencyPair": { "type": "string", "example": "EURPLN" },
+          "buySell": { "$ref": "#/components/schemas/BuySell" },
+          "volume": { "type": "string", "example": "999.00" },
+          "volumeCurrency": { "$ref": "#/components/schemas/Currency" },
+          "ts": { "type": "string", "description": "The `ts` value from a prior getRates response." }
+        }
+      },
+      "SubmitOrderBody": {
+        "type": "object",
+        "required": ["currencyPair", "buySell", "volume", "volumeCurrency", "limitPrice"],
+        "properties": {
+          "dryRun": { "type": "boolean" },
+          "submitId": { "type": "string", "description": "Required when dryRun is false." },
+          "currencyPair": { "$ref": "#/components/schemas/MarketCurrencyPair" },
+          "buySell": { "$ref": "#/components/schemas/BuySell" },
+          "volume": { "type": "string", "example": "999.00" },
+          "volumeCurrency": { "$ref": "#/components/schemas/Currency" },
+          "limitPrice": { "type": "string", "example": "4.2456" }
+        }
+      },
+      "ApiResponse_WalletBalanceArray": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WalletBalance" }
+          }
+        }
+      },
+      "ApiResponse_HistoryItemArray": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/HistoryItem" }
+          }
+        }
+      },
+      "ApiResponse_String": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "type": "string" }
+        }
+      },
+      "ApiResponse_TransferDetails": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "$ref": "#/components/schemas/TransferDetails" }
+        }
+      },
+      "ApiResponse_TransferCreationResult": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "$ref": "#/components/schemas/TransferCreationResult" }
+        }
+      },
+      "ApiResponse_ExchangeRate": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "$ref": "#/components/schemas/ExchangeRate" }
+        }
+      },
+      "ApiResponseWithDuplicate_ExchangeResult": {
+        "type": "object",
+        "required": ["success", "duplicate", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "duplicate": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "$ref": "#/components/schemas/ExchangeResult" }
+        }
+      },
+      "ApiResponse_BestOffers": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "$ref": "#/components/schemas/BestOffers" }
+        }
+      },
+      "ApiResponse_BestOffersDetailed": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "$ref": "#/components/schemas/BestOffersDetailed" }
+        }
+      },
+      "ApiResponse_MarketOrderArray": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MarketOrder" }
+          }
+        }
+      },
+      "ApiResponse_MarketOrder": {
+        "type": "object",
+        "required": ["success", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "$ref": "#/components/schemas/MarketOrder" }
+        }
+      },
+      "ApiResponseWithDuplicate_SubmitOrderResult": {
+        "type": "object",
+        "required": ["success", "duplicate", "result"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "duplicate": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } },
+          "result": { "$ref": "#/components/schemas/SubmitOrderResult" }
+        }
+      }
+    }
+  }
+}

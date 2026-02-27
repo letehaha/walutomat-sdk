@@ -1,0 +1,70 @@
+{
+  "name": "walutomat-sdk",
+  "version": "0.1.0",
+  "description": "Unofficial TypeScript client for the Walutomat API v2.0.0",
+  "keywords": [
+    "api",
+    "currency",
+    "exchange",
+    "sdk",
+    "walutomat"
+  ],
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./account": {
+      "types": "./dist/endpoints/account.d.ts",
+      "import": "./dist/endpoints/account.js"
+    },
+    "./transfers": {
+      "types": "./dist/endpoints/transfers.d.ts",
+      "import": "./dist/endpoints/transfers.js"
+    },
+    "./direct-fx": {
+      "types": "./dist/endpoints/direct-fx.d.ts",
+      "import": "./dist/endpoints/direct-fx.js"
+    },
+    "./market-fx": {
+      "types": "./dist/endpoints/market-fx.d.ts",
+      "import": "./dist/endpoints/market-fx.js"
+    },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "import": "./dist/auth.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --exclude 'src/__integration__/**'",
+    "test:watch": "vitest --exclude 'src/__integration__/**'",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "lint": "oxlint src/",
+    "fmt": "oxlint --fix src/"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "oxlint": "^1.50.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

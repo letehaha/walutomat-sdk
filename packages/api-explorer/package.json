@@ -1,0 +1,12 @@
+{
+  "name": "walutomat-api-explorer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "bun serve.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "@types/node": "^22.0.0"
+  }
+}
