@@ -1,5 +1,8 @@
 # Walutomat SDK
 
+[![CI](https://github.com/letehaha/walutomat-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/letehaha/walutomat-sdk/actions/workflows/ci.yml)
+[![Integration tests](https://github.com/letehaha/walutomat-sdk/actions/workflows/integration.yml/badge.svg)](https://github.com/letehaha/walutomat-sdk/actions/workflows/integration.yml)
+
 Unofficial SDK clients for the [Walutomat API v2.0.0](https://api.walutomat.pl/v2.0.0/).
 
 Walutomat is a Polish peer-to-peer currency exchange platform operated by Currency One. This SDK provides typed clients for their REST API, covering wallet management, transfers, direct FX, and the P2P market order book.
