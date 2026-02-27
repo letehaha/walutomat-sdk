@@ -1,5 +1,8 @@
 # walutomat-sdk
 
+[![CI](https://github.com/letehaha/walutomat-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/letehaha/walutomat-sdk/actions/workflows/ci.yml)
+[![Integration tests](https://github.com/letehaha/walutomat-sdk/actions/workflows/integration.yml/badge.svg)](https://github.com/letehaha/walutomat-sdk/actions/workflows/integration.yml)
+
 Unofficial TypeScript client for the [Walutomat API v2.0.0](https://api.walutomat.pl/v2.0.0/).
 
 Zero dependencies — uses native `fetch` and `node:crypto`.

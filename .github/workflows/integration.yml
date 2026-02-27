@@ -1,0 +1,31 @@
+name: Integration tests
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: packages/typescript
+
+jobs:
+  integration:
+    name: Read-only integration smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Run safe (read-only) integration tests
+        env:
+          WALUTOMAT_API_KEY: ${{ secrets.WALUTOMAT_API_KEY }}
+          WALUTOMAT_PRIVATE_KEY: ${{ secrets.WALUTOMAT_PRIVATE_KEY }}
+        run: >
+          bunx vitest run
+          --config vitest.integration.config.ts
+          src/__integration__/account.integration.test.ts
+          src/__integration__/market-fx.integration.test.ts
