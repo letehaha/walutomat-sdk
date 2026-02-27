@@ -25,3 +25,13 @@ jobs:
       - run: bun run typecheck
 
       - run: bun run test
+
+      - name: Run read-only integration tests
+        env:
+          WALUTOMAT_API_KEY: ${{ secrets.WALUTOMAT_API_KEY }}
+          WALUTOMAT_PRIVATE_KEY: ${{ secrets.WALUTOMAT_PRIVATE_KEY }}
+        run: >
+          bunx vitest run
+          --config vitest.integration.config.ts
+          src/__integration__/account.integration.test.ts
+          src/__integration__/market-fx.integration.test.ts
