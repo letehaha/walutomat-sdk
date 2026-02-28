@@ -1,6 +1,6 @@
 {
   "name": "walutomat-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unofficial TypeScript client for the Walutomat API v2.0.0",
   "keywords": [
     "api",
@@ -19,43 +19,86 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
     },
     "./account": {
-      "types": "./dist/endpoints/account.d.ts",
-      "import": "./dist/endpoints/account.js"
+      "import": {
+        "types": "./dist/endpoints/account.d.ts",
+        "default": "./dist/endpoints/account.js"
+      },
+      "require": {
+        "types": "./dist/cjs/endpoints/account.d.ts",
+        "default": "./dist/cjs/endpoints/account.js"
+      }
     },
     "./transfers": {
-      "types": "./dist/endpoints/transfers.d.ts",
-      "import": "./dist/endpoints/transfers.js"
+      "import": {
+        "types": "./dist/endpoints/transfers.d.ts",
+        "default": "./dist/endpoints/transfers.js"
+      },
+      "require": {
+        "types": "./dist/cjs/endpoints/transfers.d.ts",
+        "default": "./dist/cjs/endpoints/transfers.js"
+      }
     },
     "./direct-fx": {
-      "types": "./dist/endpoints/direct-fx.d.ts",
-      "import": "./dist/endpoints/direct-fx.js"
+      "import": {
+        "types": "./dist/endpoints/direct-fx.d.ts",
+        "default": "./dist/endpoints/direct-fx.js"
+      },
+      "require": {
+        "types": "./dist/cjs/endpoints/direct-fx.d.ts",
+        "default": "./dist/cjs/endpoints/direct-fx.js"
+      }
     },
     "./market-fx": {
-      "types": "./dist/endpoints/market-fx.d.ts",
-      "import": "./dist/endpoints/market-fx.js"
+      "import": {
+        "types": "./dist/endpoints/market-fx.d.ts",
+        "default": "./dist/endpoints/market-fx.js"
+      },
+      "require": {
+        "types": "./dist/cjs/endpoints/market-fx.d.ts",
+        "default": "./dist/cjs/endpoints/market-fx.js"
+      }
     },
     "./auth": {
-      "types": "./dist/auth.d.ts",
-      "import": "./dist/auth.js"
+      "import": {
+        "types": "./dist/auth.d.ts",
+        "default": "./dist/auth.js"
+      },
+      "require": {
+        "types": "./dist/cjs/auth.d.ts",
+        "default": "./dist/cjs/auth.js"
+      }
     },
     "./errors": {
-      "types": "./dist/errors.d.ts",
-      "import": "./dist/errors.js"
+      "import": {
+        "types": "./dist/errors.d.ts",
+        "default": "./dist/errors.js"
+      },
+      "require": {
+        "types": "./dist/cjs/errors.d.ts",
+        "default": "./dist/cjs/errors.js"
+      }
     },
     "./types": {
       "types": "./dist/types/index.d.ts"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.cjs.build.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude 'src/__integration__/**'",
     "test:watch": "vitest --exclude 'src/__integration__/**'",
