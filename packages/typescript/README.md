@@ -19,10 +19,10 @@ Requires Node.js >= 18.
 ## Quick Start
 
 ```typescript
-import { WalutomatClient } from 'walutomat-sdk';
+import { createClient } from 'walutomat-sdk';
 import { readFileSync } from 'node:fs';
 
-const client = new WalutomatClient({
+const client = createClient({
   apiKey: 'your-api-key',
   privateKey: readFileSync('./private.key', 'utf-8'),
   // sandbox: true, // use api.walutomat.dev for testing
@@ -85,6 +85,51 @@ try {
   }
 }
 ```
+
+## Custom Fetch
+
+By default the SDK uses the global `fetch`. You can provide a custom implementation via the `fetch` option — useful for adding logging, retries, proxying, or adapting another HTTP library:
+
+```typescript
+const client = createClient({
+  apiKey: 'your-api-key',
+  privateKey: readFileSync('./private.key', 'utf-8'),
+  fetch: async (url, init) => {
+    console.log(`[walutomat] ${init?.method ?? 'GET'} ${url}`);
+    const response = await fetch(url, init);
+    console.log(`[walutomat] ${response.status}`);
+    return response;
+  },
+});
+```
+
+You can also use this to integrate with `axios`, `undici`, or any other HTTP client — as long as the wrapper returns a standard `Response`:
+
+```typescript
+import axios from 'axios';
+
+const instance = axios.create({ timeout: 10_000 });
+
+const client = createClient({
+  apiKey: 'your-api-key',
+  privateKey: readFileSync('./private.key', 'utf-8'),
+  fetch: async (url, init) => {
+    const res = await instance.request({
+      url: url.toString(),
+      method: init?.method as string,
+      headers: init?.headers as Record<string, string>,
+      data: init?.body,
+    });
+
+    return new Response(JSON.stringify(res.data), {
+      status: res.status,
+      headers: res.headers as HeadersInit,
+    });
+  },
+});
+```
+
+> **Note:** The SDK signs each request _before_ calling `fetch`. Do not modify the URL path, query string, or body inside your custom `fetch` — this will invalidate the RSA signature and the API will reject the request.
 
 ## Authentication
 
