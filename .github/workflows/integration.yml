@@ -20,12 +20,9 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - name: Run safe (read-only) integration tests
+      - name: Run integration tests (sandbox)
         env:
           WALUTOMAT_API_KEY: ${{ secrets.WALUTOMAT_API_KEY }}
           WALUTOMAT_PRIVATE_KEY: ${{ secrets.WALUTOMAT_PRIVATE_KEY }}
-        run: >
-          bunx vitest run
-          --config vitest.integration.config.ts
-          src/__integration__/account.integration.test.ts
-          src/__integration__/market-fx.integration.test.ts
+          WALUTOMAT_SANDBOX: "true"
+        run: bun run test:integration
