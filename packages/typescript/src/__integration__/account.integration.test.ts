@@ -7,6 +7,8 @@ import {
 } from "../endpoints/account.js";
 import { getIntegrationHttp, HAS_CREDENTIALS } from "./setup.js";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 describe.skipIf(!HAS_CREDENTIALS)("account (integration)", () => {
   const http = HAS_CREDENTIALS ? getIntegrationHttp() : (undefined as never);
 
@@ -65,10 +67,62 @@ describe.skipIf(!HAS_CREDENTIALS)("account (integration)", () => {
 
   it("getHistoryMt940 returns an MT940 string", async () => {
     const today = new Date();
-    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * DAY_MS);
     const dateFrom = thirtyDaysAgo.toISOString().split("T")[0]!;
 
     const mt940 = await getHistoryMt940(http, { dateFrom });
+
+    expect(typeof mt940).toBe("string");
+  });
+
+  it("getHistory with future date window returns empty array", async () => {
+    const tomorrow = new Date(Date.now() + DAY_MS).toISOString();
+    const dayAfter = new Date(Date.now() + 2 * DAY_MS).toISOString();
+
+    const items = await getHistory(http, {
+      dateFrom: tomorrow,
+      dateTo: dayAfter,
+      itemLimit: 10,
+    });
+
+    expect(Array.isArray(items)).toBe(true);
+    expect(items.length).toBe(0);
+  });
+
+  it("getHistory with sortOrder ASC returns items in ascending order", async () => {
+    const items = await getHistory(http, {
+      sortOrder: "ASC",
+      itemLimit: 10,
+    });
+
+    if (items.length >= 2) {
+      for (let i = 1; i < items.length; i++) {
+        expect(items[i]!.historyItemId).toBeGreaterThan(items[i - 1]!.historyItemId);
+      }
+    }
+  });
+
+  it("getHistoryIterator with no results yields nothing", async () => {
+    const tomorrow = new Date(Date.now() + DAY_MS).toISOString();
+    const dayAfter = new Date(Date.now() + 2 * DAY_MS).toISOString();
+    const collected: unknown[] = [];
+
+    for await (const item of getHistoryIterator(http, {
+      dateFrom: tomorrow,
+      dateTo: dayAfter,
+      itemLimit: 10,
+    })) {
+      collected.push(item);
+    }
+
+    expect(collected.length).toBe(0);
+  });
+
+  it("getHistoryMt940 with future date range returns empty or minimal MT940", async () => {
+    const mt940 = await getHistoryMt940(http, {
+      dateFrom: "2099-01-01",
+      dateTo: "2099-01-02",
+    });
 
     expect(typeof mt940).toBe("string");
   });
